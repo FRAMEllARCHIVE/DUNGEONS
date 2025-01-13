@@ -86,8 +86,13 @@
     </style>
 </head>
 <body>
+
+
     <div id="game-map">
         <div id="player" class="idle1"></div>
+    <div id="joystick">
+        <div id="joystick-indicator"></div>
+
 
 <svg id="obstacle-svg" width="2000" height="2000">
     <path id="obstacle-path" d="M100 100 H 200 L 200 200 L 100 200 Z" fill="red"/>
@@ -150,7 +155,7 @@ if (Math.abs(player.velocityY) < 0.2) player.velocityY = 0;
     player.positionX = Math.max(0, Math.min(player.positionX, 2000 - playerElement.offsetWidth));
     player.positionY = Math.max(0, Math.min(player.positionY, 2000 - playerElement.offsetHeight));
 
-checkCollision();
+    checkCollision();
 
     playerElement.style.left = `${player.positionX}px`;
     playerElement.style.top = `${player.positionY}px`;
@@ -165,26 +170,101 @@ checkCollision();
 
 
 
-//INPUT CONTROLLER
+// INPUT CONTROLLER
 
 const inputController = {
+    gamepadIndex: null,
+    keys: { w: false, a: false, s: false, d: false }, // Unified keys for movement
+
     updateVelocity: () => {
-        // Update velocity based on key presses
-        if (player.movingKeys['ArrowUp']) {
+
+        if (inputController.keys.w || player.movingKeys['ArrowUp']) {
             player.velocityY -= player.acceleration;
         }
-        if (player.movingKeys['ArrowDown']) {
+        if (inputController.keys.s || player.movingKeys['ArrowDown']) {
             player.velocityY += player.acceleration;
         }
-        if (player.movingKeys['ArrowLeft']) {
+        if (inputController.keys.a || player.movingKeys['ArrowLeft']) {
             player.velocityX -= player.acceleration;
         }
-        if (player.movingKeys['ArrowRight']) {
+        if (inputController.keys.d || player.movingKeys['ArrowRight']) {
             player.velocityX += player.acceleration;
+        }
+
+        if (inputController.gamepadIndex !== null) {
+            const gamepad = navigator.getGamepads()[inputController.gamepadIndex];
+            if (gamepad) {
+                const axisX = gamepad.axes[0];
+                const axisY = gamepad.axes[1];
+
+                if (Math.abs(axisX) > 0.1) {
+                    player.velocityX += axisX * player.acceleration;
+                }
+                if (Math.abs(axisY) > 0.1) {
+                    player.velocityY += axisY * player.acceleration;
+                }
+            }
         }
     }
 };
 
+//VIRTUAL JOYSTICK
+
+const joystick = document.getElementById('joystick');
+const joystickIndicator = document.getElementById('joystick-indicator');
+let joystickActive = false;
+let joystickCenter = { x: 0, y: 0 };
+
+const styleJoysticks = () => {
+    const joystickStyle = joystick.style;
+    joystickStyle.position = 'absolute';
+    joystickStyle.bottom = '20px';
+    joystickStyle.left = '20px';
+    joystickStyle.width = '100px';
+    joystickStyle.height = '100px';
+    joystickStyle.background = 'rgba(255, 255, 255, 0.2)';
+    joystickStyle.borderRadius = '50%';
+    joystickStyle.display = 'none';
+
+    const joystickIndicatorStyle = joystickIndicator.style;
+    joystickIndicatorStyle.position = 'absolute';
+    joystickIndicatorStyle.width = '40px';
+    joystickIndicatorStyle.height = '40px';
+    joystickIndicatorStyle.background = 'rgba(255, 255, 255, 0.5)';
+    joystickIndicatorStyle.borderRadius = '50%';
+    joystickIndicatorStyle.top = '50%';
+    joystickIndicatorStyle.left = '50%';
+    joystickIndicatorStyle.transform = 'translate(-50%, -50%)';
+};
+
+styleJoysticks();
+
+function handleJoystickMove(event) {
+    const touch = event.touches[0];
+    const dx = touch.clientX - joystickCenter.x;
+    const dy = touch.clientY - joystickCenter.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const maxDistance = 50;
+
+    if (distance > maxDistance) {
+        const angle = Math.atan2(dy, dx);
+        joystickIndicator.style.left = `${50 + Math.cos(angle) * maxDistance}%`;
+        joystickIndicator.style.top = `${50 + Math.sin(angle) * maxDistance}%`;
+    } else {
+        joystickIndicator.style.left = `${50 + dx}px`;
+        joystickIndicator.style.top = `${50 + dy}px`;
+    }
+
+    inputController.keys.w = dy < -10;
+    inputController.keys.s = dy > 10;
+    inputController.keys.a = dx < -10;
+    inputController.keys.d = dx > 10;
+}
+
+function handleJoystickEnd() {
+    joystick.style.display = 'none';
+    inputController.keys.w = inputController.keys.a = inputController.keys.s = inputController.keys.d = false;
+}
 
 
 //SPRITE CONTROLLER
@@ -247,18 +327,67 @@ function getDirection(velocityX, velocityY) {
 
 
 
-//EVENT LISTENERS
-
+// EVENT LISTENERS
 
 document.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         player.movingKeys[event.key] = true;
+    }
+
+    if (event.key === 'w' || event.key === 'a' || event.key === 's' || event.key === 'd') {
+        inputController.keys[event.key] = true;
     }
 });
 
 document.addEventListener('keyup', (event) => {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         player.movingKeys[event.key] = false;
+    }
+
+    if (event.key === 'w' || event.key === 'a' || event.key === 's' || event.key === 'd') {
+        inputController.keys[event.key] = false;
+    }
+});
+
+window.addEventListener('gamepadconnected', (event) => {
+    inputController.gamepadIndex = event.gamepad.index;
+    console.log(`Gamepad connected: ${event.gamepad.id}`);
+});
+
+window.addEventListener('gamepaddisconnected', (event) => {
+    if (inputController.gamepadIndex === event.gamepad.index) {
+        inputController.gamepadIndex = null;
+        console.log(`Gamepad disconnected: ${event.gamepad.id}`);
+    }
+});
+
+window.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        if (touch.clientX <= screenWidth / 2 && touch.clientY >= screenHeight / 2) {
+            joystick.style.display = 'block';
+            joystickCenter = {
+                x: touch.clientX,
+                y: touch.clientY
+            };
+            joystick.style.left = `${joystickCenter.x - 50}px`;
+            joystick.style.top = `${joystickCenter.y - 50}px`;
+        }
+    }
+});
+
+window.addEventListener('touchmove', (e) => {
+    if (joystick.style.display === 'block') {
+        handleJoystickMove(e);
+    }
+});
+
+window.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+        handleJoystickEnd();
     }
 });
 
