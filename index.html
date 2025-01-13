@@ -368,7 +368,15 @@ window.addEventListener('gamepaddisconnected', (event) => {
     }
 });
 
+document.addEventListener('gesturestart', function (e) {
+    e.preventDefault();
+});
+
 window.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+
     if (e.touches.length === 1) {
         const touch = e.touches[0];
         const screenWidth = window.innerWidth;
@@ -384,13 +392,15 @@ window.addEventListener('touchstart', (e) => {
             joystick.style.top = `${joystickCenter.y - 50}px`;
         }
     }
-});
+}, { passive: false });
 
 window.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+
     if (joystick.style.display === 'block') {
         handleJoystickMove(e);
     }
-});
+}, { passive: false });
 
 window.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) {
