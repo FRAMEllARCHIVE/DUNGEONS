@@ -125,32 +125,16 @@
 
         const playerElement = document.getElementById('player');
         const gameMap = document.getElementById('game-map');
-        const obstacleElement = document.getElementById('obstacle');
 
-
-
-
-
-//COLLISION DETECTION
-        
 function checkCollision() {
-    const playerCenterX = player.positionX + playerElement.offsetWidth / 2;
-    const playerCenterY = player.positionY + playerElement.offsetHeight / 2;
-
-    const obstacleSVG = document.getElementById('obstacle-svg');
+    const playerX = player.positionX + playerElement.offsetWidth / 2;
+    const playerY = player.positionY + playerElement.offsetHeight / 2;
     const obstaclePath = document.getElementById('obstacle-path');
-
-    const path = new Path2D(obstaclePath.getAttribute('d'));
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    canvas.width = obstacleSVG.width.baseVal.value;
-    canvas.height = obstacleSVG.height.baseVal.value;
-    
-    ctx.fill(path);
-    
-    if (ctx.isPointInPath(playerCenterX, playerCenterY)) {
+    const svgPoint = obstaclePath.ownerSVGElement.createSVGPoint();
+    svgPoint.x = playerX;
+    svgPoint.y = playerY;
+    const isInside = obstaclePath.isPointInFill(svgPoint);
+    if (isInside) {
         handleCollision();
     }
 }
@@ -158,8 +142,6 @@ function checkCollision() {
 function handleCollision() {
     console.log("Collision detected!");
 }
-
-
 
 //GAMELOOP
 
@@ -204,7 +186,7 @@ if (Math.abs(player.velocityY) < 0.2) player.velocityY = 0;
 
 const inputController = {
     gamepadIndex: null,
-    keys: { w: false, a: false, s: false, d: false }, // Unified keys for movement
+    keys: { w: false, a: false, s: false, d: false }, 
 
     updateVelocity: () => {
 
