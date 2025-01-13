@@ -132,8 +132,31 @@
 
 
 //COLLISION DETECTION
-
+        
 function checkCollision() {
+    const playerCenterX = player.positionX + playerElement.offsetWidth / 2;
+    const playerCenterY = player.positionY + playerElement.offsetHeight / 2;
+
+    const obstacleSVG = document.getElementById('obstacle-svg');
+    const obstaclePath = document.getElementById('obstacle-path');
+
+    const path = new Path2D(obstaclePath.getAttribute('d'));
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = obstacleSVG.width.baseVal.value;
+    canvas.height = obstacleSVG.height.baseVal.value;
+    
+    ctx.fill(path);
+    
+    if (ctx.isPointInPath(playerCenterX, playerCenterY)) {
+        handleCollision();
+    }
+}
+
+function handleCollision() {
+    console.log("Collision detected!");
 }
 
 
