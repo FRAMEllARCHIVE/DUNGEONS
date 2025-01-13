@@ -102,7 +102,7 @@
     </div>
 
 <svg id="obstacle-svg" width="2000" height="2000">
-    <path id="obstacle-path" d="M100 100 H 200 L 200 200 L 100 200 Z" fill="red"/>
+    <path id="obstacle-path" d="M200 300 H 400 L 500 300 L 200 600 Z" fill="red"/>
 </svg>
 
     </div>
@@ -126,22 +126,64 @@
         const playerElement = document.getElementById('player');
         const gameMap = document.getElementById('game-map');
 
+
+
+
+//COLLISIONS
+
 function checkCollision() {
     const playerX = player.positionX + playerElement.offsetWidth / 2;
     const playerY = player.positionY + playerElement.offsetHeight / 2;
+    const playerRadius = 30;
+
     const obstaclePath = document.getElementById('obstacle-path');
-    const svgPoint = obstaclePath.ownerSVGElement.createSVGPoint();
-    svgPoint.x = playerX;
-    svgPoint.y = playerY;
-    const isInside = obstaclePath.isPointInFill(svgPoint);
-    if (isInside) {
-        handleCollision();
+    const pathLength = obstaclePath.getTotalLength();
+
+    let isIntersecting = false;
+    let closestPoint = null;
+    let closestDistance = Infinity;
+
+    for (let i = 0; i < pathLength; i++) {
+        const point = obstaclePath.getPointAtLength(i);
+        const distance = Math.sqrt(
+            Math.pow(point.x - playerX, 2) + Math.pow(point.y - playerY, 2)
+        );
+
+        if (distance <= playerRadius) {
+            isIntersecting = true;
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestPoint = point;
+            }
+        }
+    }
+
+    if (isIntersecting && closestPoint) {
+        handleCollision(closestPoint);
     }
 }
 
-function handleCollision() {
-    console.log("Collision detected!");
+function handleCollision(closestPoint) {
+    const playerX = player.positionX + playerElement.offsetWidth / 2;
+    const playerY = player.positionY + playerElement.offsetHeight / 2;
+
+    const dx = closestPoint.x - playerX;
+    const dy = closestPoint.y - playerY;
+
+    const magnitude = Math.sqrt(dx * dx + dy * dy);
+    const unitDx = dx / magnitude;
+    const unitDy = dy / magnitude;
+
+    const playerRadius = 50;
+
+    const dotProduct = player.velocityX * unitDx + player.velocityY * unitDy;
+    if (dotProduct > 0) {
+        const reflectFactor = 6.0;
+        player.velocityX -= dotProduct * unitDx * reflectFactor;
+        player.velocityY -= dotProduct * unitDy * reflectFactor;
+    }
 }
+
 
 //GAMELOOP
 
