@@ -25,8 +25,10 @@
             position: absolute;
             width: 2000px;
             height: 2000px;
-            background-image: url('map.png');
-            background-size: cover;
+           background-image: url('level3.webp');
+background-size: 1000px 1000px;
+background-position: center;
+background-repeat: no-repeat;
         }
 
         .SSW1 { background-position: -200px -0px; }
@@ -101,9 +103,14 @@
         <div id="joystick-indicator"></div>
     </div>
 
-<svg id="obstacle-svg" width="2000" height="2000">
-    <path id="obstacle-path" d="M200 300 H 400 L 500 300 L 200 600 Z" fill="red"/>
+<svg id="obstacle-svg" width="2000" height="2000" xmlns="http://www.w3.org/2000/svg">
+    <path id="obstacle-path" 
+          d="M500 500 H1500 V1500 H500 Z" 
+          fill="none" 
+          stroke="red" 
+          stroke-width="10" />
 </svg>
+
 
     </div>
 
@@ -111,8 +118,8 @@
     <script>
 
         let player = {
-            positionX: 900,
-            positionY: 800,
+            positionX: 1000,
+            positionY: 1000,
             velocityX: 0,
             velocityY: 0,
             friction: 0.95,
