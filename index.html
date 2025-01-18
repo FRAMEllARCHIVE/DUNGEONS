@@ -19,7 +19,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-background-color: black;
+            background-color: black;
         }
 
         #game-map {
@@ -27,9 +27,9 @@ background-color: black;
             width: 2000px;
             height: 2000px;
            background-image: url('level3.webp');
-background-size: 1000px 1000px;
-background-position: center;
-background-repeat: no-repeat;
+            background-size: 1000px 1000px;
+            background-position: center;
+            background-repeat: no-repeat;
         }
 
         .SSW1 { background-position: -200px -0px; }
@@ -114,10 +114,15 @@ background-repeat: no-repeat;
 
     </div>
 
-
+    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
     <script>
 
+
+
+
+
         let player = {
+            element: document.getElementById('player'),
             positionX: 1000,
             positionY: 1000,
             velocityX: 0,
@@ -130,10 +135,11 @@ background-repeat: no-repeat;
             movingKeys: {}
         };
 
-        const playerElement = document.getElementById('player');
+const remotePlayers = {};
+const monsters = {};
+
         const gameMap = document.getElementById('game-map');
-
-
+        const playerElement = document.getElementById('player');
 
 
 //COLLISIONS
@@ -192,43 +198,6 @@ function handleCollision(closestPoint) {
 }
 
 
-//GAMELOOP
-
-function updateGame() {
-    inputController.updateVelocity();
-
-player.velocityX *= player.friction;
-player.velocityY *= player.friction;
-
-if (Math.abs(player.velocityX) < 0.2) player.velocityX = 0;
-if (Math.abs(player.velocityY) < 0.2) player.velocityY = 0;
-
-
-    const magnitude = Math.sqrt(player.velocityX ** 2 + player.velocityY ** 2);
-    if (magnitude > player.maxVelocity) {
-        player.velocityX = (player.velocityX / magnitude) * player.maxVelocity;
-        player.velocityY = (player.velocityY / magnitude) * player.maxVelocity;
-    }
-
-    player.positionX += player.velocityX;
-    player.positionY += player.velocityY;
-
-    player.positionX = Math.max(0, Math.min(player.positionX, 2000 - playerElement.offsetWidth));
-    player.positionY = Math.max(0, Math.min(player.positionY, 2000 - playerElement.offsetHeight));
-
-    checkCollision();
-
-    playerElement.style.left = `${player.positionX}px`;
-    playerElement.style.top = `${player.positionY}px`;
-
-    gameMap.style.left = `-${player.positionX - window.innerWidth / 2}px`;
-    gameMap.style.top = `-${player.positionY - window.innerHeight / 2}px`;
-
-    spriteController.updateSprite();
-
-    requestAnimationFrame(updateGame);
-}
-
 
 
 // INPUT CONTROLLER
@@ -269,105 +238,48 @@ const inputController = {
     }
 };
 
-//VIRTUAL JOYSTICK
-
-const joystick = document.getElementById('joystick');
-const joystickIndicator = document.getElementById('joystick-indicator');
-let joystickActive = false;
-let joystickCenter = { x: 0, y: 0 };
-
-const styleJoysticks = () => {
-    const joystickStyle = joystick.style;
-    joystickStyle.position = 'fixed';
-    joystickStyle.bottom = '20px';
-    joystickStyle.left = '20px';
-    joystickStyle.width = '100px';
-    joystickStyle.height = '100px';
-    joystickStyle.background = 'rgba(255, 255, 255, 0.2)';
-    joystickStyle.borderRadius = '50%';
-    joystickStyle.display = 'none';
-
-    const joystickIndicatorStyle = joystickIndicator.style;
-    joystickIndicatorStyle.position = 'absolute';
-    joystickIndicatorStyle.width = '40px';
-    joystickIndicatorStyle.height = '40px';
-    joystickIndicatorStyle.background = 'rgba(255, 255, 255, 0.5)';
-    joystickIndicatorStyle.borderRadius = '50%';
-    joystickIndicatorStyle.top = '50%';
-    joystickIndicatorStyle.left = '50%';
-    joystickIndicatorStyle.transform = 'translate(-50%, -50%)';
-};
-
-styleJoysticks();
-
-function handleJoystickMove(event) {
-    const touch = event.touches[0];
-    const dx = touch.clientX - joystickCenter.x;
-    const dy = touch.clientY - joystickCenter.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const maxDistance = 50;
-
-    if (distance > maxDistance) {
-        const angle = Math.atan2(dy, dx);
-        joystickIndicator.style.left = `${50 + Math.cos(angle) * maxDistance}%`;
-        joystickIndicator.style.top = `${50 + Math.sin(angle) * maxDistance}%`;
-    } else {
-        joystickIndicator.style.left = `${50 + dx}px`;
-        joystickIndicator.style.top = `${50 + dy}px`;
-    }
-
-    inputController.keys.w = dy < -10;
-    inputController.keys.s = dy > 10;
-    inputController.keys.a = dx < -10;
-    inputController.keys.d = dx > 10;
-}
-
-function handleJoystickEnd() {
-    joystick.style.display = 'none';
-    inputController.keys.w = inputController.keys.a = inputController.keys.s = inputController.keys.d = false;
-}
-
-
 //SPRITE CONTROLLER
 
 const spriteController = {
-    updateSprite: () => {
-        const { velocityX, velocityY } = player;
+    updateSprite: (character) => {
+
+        const { velocityX, velocityY } = character;
         const direction = getDirection(velocityX, velocityY);
 
-        player.idleFrameTime += 1;
+        character.idleFrameTime += 1;
 
         if (direction !== 'idle') {
-            if (player.idleFrameTime > 10) { 
-                if (player.spriteIndex === 1) {
-                    playerElement.className = `${direction}1`;
-                    player.spriteIndex = 2;
-                } else if (player.spriteIndex === 2) {
-                    playerElement.className = `${direction}2`;
-                    player.spriteIndex = 3;
+            if (character.idleFrameTime > 10) { 
+                if (character.spriteIndex === 1) {
+                    character.element.className = `${direction}1`;
+                    character.spriteIndex = 2;
+                } else if (character.spriteIndex === 2) {
+                    character.element.className = `${direction}2`;
+                    character.spriteIndex = 3;
                 } else {
-                    playerElement.className = `${direction}3`;
-                    player.spriteIndex = 1;
+                    character.element.className = `${direction}3`;
+                    character.spriteIndex = 1;
                 }
-                player.idleFrameTime = 0;
+                character.idleFrameTime = 0;
             }
         } else {
-            if (player.idleFrameTime > 10) {
-                if (player.spriteIndex === 1) {
-                    playerElement.className = 'idle1';
-                    player.spriteIndex = 2;
-                } else if (player.spriteIndex === 2) {
-                    playerElement.className = 'idle2';
-                    player.spriteIndex = 3;
+            if (character.idleFrameTime > 10) {
+                if (character.spriteIndex === 1) {
+                    character.element.className = 'idle1';
+                    character.spriteIndex = 2;
+                } else if (character.spriteIndex === 2) {
+                    character.element.className = 'idle2';
+                    character.spriteIndex = 3;
                 } else {
-                    playerElement.className = 'idle3';
-                    player.spriteIndex = 1;
+                    character.element.className = 'idle3';
+                    character.spriteIndex = 1;
                 }
-                player.idleFrameTime = 0;
+                character.idleFrameTime = 0;
             }
         }
     }
 };
+
 
 
 function getDirection(velocityX, velocityY) {
@@ -410,59 +322,313 @@ document.addEventListener('keyup', (event) => {
     }
 });
 
-window.addEventListener('gamepadconnected', (event) => {
-    inputController.gamepadIndex = event.gamepad.index;
-    console.log(`Gamepad connected: ${event.gamepad.id}`);
-});
 
-window.addEventListener('gamepaddisconnected', (event) => {
-    if (inputController.gamepadIndex === event.gamepad.index) {
-        inputController.gamepadIndex = null;
-        console.log(`Gamepad disconnected: ${event.gamepad.id}`);
+//MULTIPLAYER
+
+
+
+        const staticPeerID = "HOST";
+        let peer = new Peer(), connections = [];
+        let isConnected = false;
+        let newPeerID;
+        console.log("Initializing PeerJS with random peer ID");
+
+        const remoteplayerElement = document.getElementById('player');
+
+const players = {
+    local: { id: peer.id, element: remoteplayerElement, positionX: player.positionX, positionY: player.positionY },
+    remote: null
+};
+
+   function connect(peerID) {
+            if (isConnected) {
+                console.log("Connection attempt blocked: already connected to a peer.");
+                return;
+            }
+            
+            console.log(`Attempting to connect to peer ID: ${peerID}`);
+            const conn = peer.connect(peerID);
+
+            conn.on('open', () => {
+                console.log(`Connection successful to peer: ${peerID}`);
+                connections.push(conn);
+                isConnected = true;
+                setupConnection(conn);
+            });
+
+            conn.on('error', err => {
+                console.error(`Connection error to peer ${peerID}:`, err);
+            });
+        }
+
+   function inheritStaticPeerID() {
+            console.log(`Re-initializing PeerJS with static peer ID: ${staticPeerID}`);
+            peer = new Peer(staticPeerID);
+
+            peer.on('open', () => {
+                console.log(`Peer opened with static peer ID: ${staticPeerID}`);
+                setupIncomingConnections();
+            });
+
+            peer.on('error', err => {
+                if (err.type === 'unavailable-id') {
+                    console.warn("Peer ID is unavailable, retrying...");
+                } else {
+                    console.error("PeerJS error:", err);
+                }
+            });
+        }
+
+   function setupIncomingConnections() {
+            peer.on('connection', conn => {
+                if (isConnected) {
+                    console.log("Connection attempt blocked: already connected.");
+                    conn.close();
+                    return;
+                }
+
+                console.log("New client connected.");
+                console.log("Closing existing peer connections.");
+                connections.forEach(c => c.close());
+                connections = [];
+                connections.push(conn);
+                isConnected = true;
+                setupConnection(conn);
+
+                newPeerID = `HOST_${Date.now()}_${Math.floor(Math.random() * 999999999)}`;
+
+                console.log(`Generating a new peer ID for the host: ${newPeerID}`);
+
+                conn.on('open', () => {
+                    conn.send(newPeerID);
+                    console.log(`Sent new peer ID to client:${newPeerID}`);
+                });
+            });
+        }
+
+   function setupConnection(conn) {
+            console.log("Setting up data connection.");
+            console.log(`Connected to peer ID: ${conn.peer}`);
+            conn.on('data', data => {
+                console.log("Data received from peer:", data);
+
+                if (typeof data === 'object' && data.type) {
+                    switch (data.type) {
+                        case 'position':
+                            updateRemotePlayerPosition(data);
+                            break;
+                    }
+                }
+
+            });
+
+            conn.on('close', () => {
+                console.warn("Connection closed.");
+                isConnected = false;
+                players.remote = null;
+            });
+
+            conn.on('error', err => {
+                console.error("Error in connection:", err);
+            });
+        }
+
+   function initPEER() {
+
+            peer.on('open', () => {
+                console.log("PeerJS connection opened with random peer ID.");
+                connect(staticPeerID);
+            });
+
+            peer.on('error', err => {
+                if (err.type === 'peer-unavailable') {
+                    console.warn(`Peer ${staticPeerID} unavailable, inheriting static peer ID.`);
+                    inheritStaticPeerID();
+                } else {
+                    console.error("Unhandled PeerJS error:", err);
+                }
+            });
+       }
+
+
+
+function createPlayer(id, isLocal) {
+    const playerDiv = document.createElement('div');
+    playerDiv.className = 'remotePlayer';
+    playerDiv.style.position = 'absolute';
+    playerDiv.style.width = '100px';
+    playerDiv.style.height = '100px';
+    playerDiv.style.backgroundImage = 'url("spritesheet.png")';
+    gameMap.appendChild(playerDiv);
+
+    return {
+        id,
+        element: playerDiv,
+        positionX: 0,
+        positionY: 0,
+        targetX: 0,
+        targetY: 0,
+        xPercent: 0,
+        yPercent: 0,
+        spriteIndex: 1,
+        idleFrameTime: 0,
+        velocityX: 0,
+        velocityY: 0
+    };
+}
+
+//BROADCAST CHANNEL
+
+   let lastBroadcastTime = 0;
+   const broadcastInterval = 69;
+
+   function broadcastPosition() {
+    const currentTime = Date.now();
+    if (isConnected && (currentTime - lastBroadcastTime > broadcastInterval)) {
+        const positionData = {
+            type: 'position',
+            id: peer.id,
+            x: player.positionX,
+            y: player.positionY
+        };
+
+        connections.forEach(conn => {
+            conn.send(positionData);
+        });
+
+        lastBroadcastTime = currentTime;
     }
-});
+}
 
-document.addEventListener('gesturestart', function (e) {
-    e.preventDefault();
-});
+                     
+function interpolatePosition(remotePlayer, targetXPercent, targetYPercent) {
+    const interpolationFactor = 0.8;
 
-window.addEventListener('touchstart', (e) => {
-    if (e.touches.length > 1) {
-        e.preventDefault();
+    const deltaX = targetXPercent - remotePlayer.xPercent;
+    const deltaY = targetYPercent - remotePlayer.yPercent;
+
+    remotePlayer.xPercent += deltaX * interpolationFactor;
+    remotePlayer.yPercent += deltaY * interpolationFactor;
+
+    const velocityX = deltaX * interpolationFactor;
+    const velocityY = deltaY * interpolationFactor;
+
+    updateRemotePlayerPositionOnScreen(remotePlayer);
+
+    updateRemotePlayerSprite(remotePlayer, velocityX, velocityY);
+}
+
+function updateRemotePlayerPositionOnScreen(remotePlayer) {
+    if (remotePlayer && remotePlayer.element) {
+        remotePlayer.element.style.left = `${remotePlayer.xPercent}px`;
+        remotePlayer.element.style.top = `${remotePlayer.yPercent}px`;
+    }
+}
+
+function updateRemotePlayerPosition(data) {
+
+    if (!remotePlayers[data.id]) {
+        remotePlayers[data.id] = createPlayer(data.id, false);
     }
 
-    if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
+    const remotePlayer = remotePlayers[data.id];
 
-        if (touch.clientX <= screenWidth / 2 && touch.clientY >= screenHeight / 2) {
-            joystick.style.display = 'block';
-            joystickCenter = {
-                x: touch.clientX,
-                y: touch.clientY
-            };
-            joystick.style.left = `${joystickCenter.x - 50}px`;
-            joystick.style.top = `${joystickCenter.y - 50}px`;
+    remotePlayer.targetXPercent = data.x;
+    remotePlayer.targetYPercent = data.y;
+
+    interpolatePosition(remotePlayer, remotePlayer.targetXPercent, remotePlayer.targetYPercent);
+
+    const velocityX = remotePlayer.targetXPercent - remotePlayer.xPercent;
+    const velocityY = remotePlayer.targetYPercent - remotePlayer.yPercent;
+    updateRemotePlayerSprite(remotePlayer, velocityX, velocityY);
+}
+
+function updateRemotePlayerSprite(remotePlayer, velocityX, velocityY) {
+    if (Math.abs(velocityX) < 0.1 && Math.abs(velocityY) < 0.1) {
+        remotePlayer.velocityX = 0;
+        remotePlayer.velocityY = 0;
+    } else {
+        remotePlayer.velocityX = velocityX;
+        remotePlayer.velocityY = velocityY;
+    }
+
+    spriteController.updateSprite(remotePlayer);
+}
+
+
+
+   initPEER();
+
+
+//GAMELOOP
+
+
+function updateGame() {
+    inputController.updateVelocity();
+
+    player.velocityX *= player.friction;
+    player.velocityY *= player.friction;
+
+    if (Math.abs(player.velocityX) < 0.2) player.velocityX = 0;
+    if (Math.abs(player.velocityY) < 0.2) player.velocityY = 0;
+
+    const magnitude = Math.sqrt(player.velocityX ** 2 + player.velocityY ** 2);
+    if (magnitude > player.maxVelocity) {
+        player.velocityX = (player.velocityX / magnitude) * player.maxVelocity;
+        player.velocityY = (player.velocityY / magnitude) * player.maxVelocity;
+    }
+
+    player.positionX += player.velocityX;
+    player.positionY += player.velocityY;
+
+    checkCollision();
+
+    playerElement.style.left = `${player.positionX}px`;
+    playerElement.style.top = `${player.positionY}px`;
+
+    gameMap.style.left = `-${player.positionX - window.innerWidth / 2}px`;
+    gameMap.style.top = `-${player.positionY - window.innerHeight / 2}px`;
+
+    spriteController.updateSprite(player);
+
+    for (const id in remotePlayers) {
+        const remotePlayer = remotePlayers[id];
+        if (remotePlayer) {
+            const velocityX = remotePlayer.targetXPercent - remotePlayer.xPercent;
+            const velocityY = remotePlayer.targetYPercent - remotePlayer.yPercent;
+            updateRemotePlayerSprite(remotePlayer, velocityX, velocityY);
         }
     }
-}, { passive: false });
 
-window.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-
-    if (joystick.style.display === 'block') {
-        handleJoystickMove(e);
+    const currentTime = performance.now();
+    if (Math.abs(player.velocityX) > 0.2 || Math.abs(player.velocityY) > 0.2 || currentTime - lastBroadcastTime >= 1000) {
+        broadcastPosition();
+        lastBroadcastTime = currentTime;
     }
-}, { passive: false });
 
-window.addEventListener('touchend', (e) => {
-    if (e.touches.length === 0) {
-        handleJoystickEnd();
+    requestAnimationFrame(updateGame);
+}
+
+//MONSTERS
+
+function updateMonsters() {
+    for (const id in monsters) {
+        const monster = monsters[id];
+        const velocityX = monster.velocityX;
+        const velocityY = monster.velocityY;
+
+        monster.positionX += velocityX;
+        monster.positionY += velocityY;
+
+        spriteController.updateSprite(monster);
     }
-});
+}
 
-        updateGame();
+
+
+
+   
+   updateGame();
 
     </script>
 </body>
