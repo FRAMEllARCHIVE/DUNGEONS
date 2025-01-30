@@ -323,194 +323,161 @@ document.addEventListener('keyup', (event) => {
 });
 
 
-//PEER LOGIC
-   
-   let peeridno = 0;
-let ExistingPeerIDs = 0;
-let peer = null;
-const maxConnections = 3;
-const connections = new Map();
-const players = {};  // Store all players
-const localPlayer = {
-    id: null,
-    element: document.getElementById('player'),
-    positionX: 0,
-    positionY: 0
+//MULTIPLAYER
+
+
+
+        const staticPeerID = "HOST";
+        let peer = new Peer(), connections = [];
+        let isConnected = false;
+        let newPeerID;
+        console.log("Initializing PeerJS with random peer ID");
+
+        const remoteplayerElement = document.getElementById('player');
+
+const players = {
+    local: { id: peer.id, element: remoteplayerElement, positionX: player.positionX, positionY: player.positionY },
+    remote: null
 };
 
-function initializePeer() {
-    const peerId = `ponderstatichost${peeridno}`;
-    peer = new Peer(peerId, { debug: 3 });
-
-    peer.on('open', function (id) {
-        console.log(`Peer started with ID: ${id}`);
-        localPlayer.id = id;
-
-        let connectInterval = setInterval(function () {
-            tryToConnectToPeers(id);
-            ExistingPeerIDs++;
-            propagateConnections();
-
-            if (connections.size > 0) {
-                clearInterval(connectInterval);
+   function connect(peerID) {
+            if (isConnected) {
+                console.log("Connection attempt blocked: already connected to a peer.");
+                return;
             }
-        }, 888);
-    });
+            
+            console.log(`Attempting to connect to peer ID: ${peerID}`);
+            const conn = peer.connect(peerID);
 
-    peer.on('connection', function (conn) {
-        if (conn.peer === peer.id || connections.has(conn.peer) || connections.size >= maxConnections) {
-            conn.close();
-            return;
-        }
-
-        connections.set(conn.peer, conn);
-        propagateConnections();
-        setupConnection(conn);
-
-        conn.on('open', function () {
-            conn.send({
-                type: 'initial-connections',
-                data: Array.from(connections.keys())
+            conn.on('open', () => {
+                console.log(`Connection successful to peer: ${peerID}`);
+                connections.push(conn);
+                isConnected = true;
+                setupConnection(conn);
             });
-            conn.send({
-                type: 'connect-to-others',
-                peers: Array.from(connections.keys())
+
+            conn.on('error', err => {
+                console.error(`Connection error to peer ${peerID}:`, err);
             });
-        });
-
-        conn.on('close', function () {
-            connections.delete(conn.peer);
-            propagateConnections();
-        });
-    });
-
-    peer.on('error', function (err) {
-        if (err.type === 'unavailable-id') {
-            peeridno++;
-            initializePeer();
         }
-    });
 
-    setInterval(sendPlayerPosition, 100); // Send position every 100ms
-}
+   function inheritStaticPeerID() {
+            console.log(`Re-initializing PeerJS with static peer ID: ${staticPeerID}`);
+            peer = new Peer(staticPeerID);
 
-function tryToConnectToPeers(currentPeerId) {
-    const targetPeerId = `ponderstatichost${ExistingPeerIDs}`;
-    if (currentPeerId === targetPeerId || connections.has(targetPeerId)) {
-        ExistingPeerIDs++;
-        return;
-    }
+            peer.on('open', () => {
+                console.log(`Peer opened with static peer ID: ${staticPeerID}`);
+                setupIncomingConnections();
+            });
 
-    const conn = peer.connect(targetPeerId);
-
-    conn.on('open', function () {
-        connections.set(targetPeerId, conn);
-        propagateConnections();
-        setupConnection(conn);
-    });
-
-    conn.on('error', function () {
-        ExistingPeerIDs++;
-    });
-
-    conn.on('close', function () {
-        connections.delete(targetPeerId);
-        propagateConnections();
-    });
-}
-
-function setupConnection(conn) {
-    console.log(`Setting up connection with ${conn.peer}`);
-
-    conn.on('data', function (data) {
-        if (typeof data === 'object' && data.type) {
-            switch (data.type) {
-                case 'position':
-                    updateRemotePlayerPosition(data);
-                    break;
-                case 'connect-to-others':
-                    data.peers.forEach(peerId => {
-                        if (!connections.has(peerId) && peerId !== peer.id) {
-                            const newConn = peer.connect(peerId);
-                            setupConnection(newConn);
-                        }
-                    });
-                    break;
-            }
+            peer.on('error', err => {
+                if (err.type === 'unavailable-id') {
+                    console.warn("Peer ID is unavailable, retrying...");
+                } else {
+                    console.error("PeerJS error:", err);
+                }
+            });
         }
-    });
 
-    conn.on('close', () => {
-        connections.delete(conn.peer);
-        delete players[conn.peer]; // Remove player on disconnect
-        propagateConnections();
-    });
+   function setupIncomingConnections() {
+            peer.on('connection', conn => {
+                if (isConnected) {
+                    console.log("Connection attempt blocked: already connected.");
+                    conn.close();
+                    return;
+                }
 
-    conn.on('error', err => console.error("Error in connection:", err));
-}
+                console.log("New client connected.");
+                console.log("Closing existing peer connections.");
+                connections.forEach(c => c.close());
+                connections = [];
+                connections.push(conn);
+                isConnected = true;
+                setupConnection(conn);
 
-function propagateConnections() {
-    const currentConnections = Array.from(connections.keys());
-    connections.forEach(conn => {
-        conn.send({ type: 'connect-to-others', peers: currentConnections });
-    });
-}
+                newPeerID = `HOST_${Date.now()}_${Math.floor(Math.random() * 999999999)}`;
 
-// Send player position to all connected peers
-function sendPlayerPosition() {
-    const playerData = {
-        type: 'position',
-        id: localPlayer.id,
-        positionX: localPlayer.positionX,
-        positionY: localPlayer.positionY
-    };
+                console.log(`Generating a new peer ID for the host: ${newPeerID}`);
 
-    connections.forEach(conn => {
-        conn.send(playerData);
-    });
-}
+                conn.on('open', () => {
+                    conn.send(newPeerID);
+                    console.log(`Sent new peer ID to client:${newPeerID}`);
+                });
+            });
+        }
 
-// Update a remote player's position
-function updateRemotePlayerPosition(data) {
-    if (!players[data.id]) {
-        players[data.id] = createPlayer(data.id);
-    }
+   function setupConnection(conn) {
+            console.log("Setting up data connection.");
+            console.log(`Connected to peer ID: ${conn.peer}`);
+            conn.on('data', data => {
+                console.log("Data received from peer:", data);
 
-    players[data.id].positionX = data.positionX;
-    players[data.id].positionY = data.positionY;
-    updatePlayerElement(players[data.id]);
-}
+                if (typeof data === 'object' && data.type) {
+                    switch (data.type) {
+                        case 'position':
+                            updateRemotePlayerPosition(data);
+                            break;
+                    }
+                }
 
-// Create a new player element
-function createPlayer(id) {
+            });
+
+            conn.on('close', () => {
+                console.warn("Connection closed.");
+                isConnected = false;
+                players.remote = null;
+            });
+
+            conn.on('error', err => {
+                console.error("Error in connection:", err);
+            });
+        }
+
+   function initPEER() {
+
+            peer.on('open', () => {
+                console.log("PeerJS connection opened with random peer ID.");
+                connect(staticPeerID);
+            });
+
+            peer.on('error', err => {
+                if (err.type === 'peer-unavailable') {
+                    console.warn(`Peer ${staticPeerID} unavailable, inheriting static peer ID.`);
+                    inheritStaticPeerID();
+                } else {
+                    console.error("Unhandled PeerJS error:", err);
+                }
+            });
+       }
+
+
+
+function createPlayer(id, isLocal) {
     const playerDiv = document.createElement('div');
     playerDiv.className = 'remotePlayer';
     playerDiv.style.position = 'absolute';
     playerDiv.style.width = '100px';
     playerDiv.style.height = '100px';
     playerDiv.style.backgroundImage = 'url("spritesheet.png")';
-    document.getElementById('gameMap').appendChild(playerDiv);
+    gameMap.appendChild(playerDiv);
 
     return {
         id,
         element: playerDiv,
         positionX: 0,
-        positionY: 0
+        positionY: 0,
+        targetX: 0,
+        targetY: 0,
+        xPercent: 0,
+        yPercent: 0,
+        spriteIndex: 1,
+        idleFrameTime: 0,
+        velocityX: 0,
+        velocityY: 0
     };
 }
 
-
-    
-function updatePlayerElement(player) {
-        if (player.element) {
-        player.element.style.left = `${player.positionX}px`;
-        player.element.style.top = `${player.positionY}px`;
-    }
-}
-
-initializePeer();  
-   
-     //BROADCAST CHANNEL
+//BROADCAST CHANNEL
 
    let lastBroadcastTime = 0;
    const broadcastInterval = 69;
