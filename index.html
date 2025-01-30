@@ -321,9 +321,146 @@ document.addEventListener('keyup', (event) => {
         inputController.keys[event.key] = false;
     }
 });
+        
+//NEW MULTIPLAYER UPDATE
+        
+/*let peeridno = 0;
+let ExistingPeerIDs = 0;
+let peer = null;
+const maxConnections = 3;
+const connections = new Map();
 
+function initializePeer() {
+    const peerId = `ponderstatichost${peeridno}`;
+    peer = new Peer(peerId, { debug: 3 });
 
-//MULTIPLAYER
+peer.on('open', function (id) {
+    console.log(`Peer started with ID: ${id}`);
+    
+    let connectInterval = setInterval(function() {
+
+        tryToConnectToPeers(id);
+        ExistingPeerIDs++;
+        propagateConnections();
+        
+        if (connections.size > 0) {
+            clearInterval(connectInterval);
+        }
+    }, 888);
+});
+
+    peer.on('connection', function (conn) {
+        if (conn.peer === peer.id || connections.has(conn.peer) || connections.size >= maxConnections) {
+            conn.close();
+            return;
+        }
+
+        connections.set(conn.peer, conn);
+        propagateConnections();
+
+        conn.on('open', function () {
+            conn.send({
+                type: 'initial-connections',
+                data: Array.from(connections.keys())
+            });
+            conn.send({
+                type: 'connect-to-others',
+                peers: Array.from(connections.keys())
+            });
+        });
+
+        conn.on('data', handleIncomingData);
+        conn.on('close', function () {
+            connections.delete(conn.peer);
+            propagateConnections();
+        });
+    });
+
+    peer.on('error', function (err) {
+        if (err.type === 'unavailable-id') {
+            peeridno++;
+            initializePeer();
+        }
+    });
+}
+
+function tryToConnectToPeers(currentPeerId) {
+    const targetPeerId = `ponderstatichost${ExistingPeerIDs}`;
+    if (currentPeerId === targetPeerId) {
+        ExistingPeerIDs++;
+        tryToConnectToPeers(currentPeerId);
+        return;
+    }
+
+    const conn = peer.connect(targetPeerId);
+
+    conn.on('open', function () {
+        connections.set(targetPeerId, conn);
+        propagateConnections();
+
+        conn.send({ type: 'initial-connections', data: Array.from(connections.keys()) });
+        conn.send({ type: 'connect-to-others', peers: Array.from(connections.keys()) });
+    });
+
+    conn.on('error', function () {
+        ExistingPeerIDs++;
+        tryToConnectToPeers(currentPeerId);
+    });
+
+    conn.on('close', function () {
+        connections.delete(targetPeerId);
+        propagateConnections();
+    });
+
+    conn.on('data', handleIncomingData);
+}
+
+function handleIncomingData(data) {
+    if (data.type === 'connect-to-others') {
+        data.peers.forEach(peerId => {
+            if (!connections.has(peerId) && peerId !== peer.id) {
+                const newConn = peer.connect(peerId);
+
+                newConn.on('open', function () {
+                    connections.set(peerId, newConn);
+                    propagateConnections();
+                    newConn.send(`Hello from ${peer.id}`);
+                });
+
+                newConn.on('error', console.error);
+            }
+        });
+    } else if (data.type === 'initial-connections') {
+        data.data.forEach(peerId => {
+            if (!connections.has(peerId) && peerId !== peer.id) {
+                const newConn = peer.connect(peerId);
+
+                newConn.on('open', function () {
+                    connections.set(peerId, newConn);
+                    propagateConnections();
+                    newConn.send(`Hello from ${peer.id}`);
+                });
+
+                newConn.on('error', console.error);
+            }
+        });
+    } else if (data.type === 'ping') {
+        console.log(`Ping received: ${data.message}`);
+    }
+}
+
+function propagateConnections() {
+    const currentConnections = Array.from(connections.keys());
+    connections.forEach(conn => {
+        conn.send({ type: 'connect-to-others', peers: currentConnections });
+    });
+}
+
+initializePeer();
+
+*/
+        
+//OLD MULTIPLAYER
 
 
 
