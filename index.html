@@ -376,11 +376,14 @@ function initializePeer() {
     }, 888);
 });
 
-    peer.on('connection', function (conn) {
+
+        peer.on('connection', function (conn) {
         if (conn.peer === peer.id || connections.has(conn.peer) || connections.size >= maxConnections) {
             conn.close();
             return;
-        }
+    } else {
+        isConnected = true;
+    }
 
         connections.set(conn.peer, conn);
         propagateConnections();
